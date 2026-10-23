@@ -1,0 +1,44 @@
+@TP_Stationnement_HostAddress = http://localhost:5184
+
+### Véhicules
+GET {{TP_Stationnement_HostAddress}}/vehicules
+
+### Créer un véhicule
+POST {{TP_Stationnement_HostAddress}}/vehicules
+Content-Type: application/json
+
+{
+  "marque": "Toyota",
+  "modele": "Corolla",
+  "couleur": "grise",
+  "description": "Égratignure sur le pare-chocs arrière"
+}
+
+### Entrée
+POST {{TP_Stationnement_HostAddress}}/sessions/entree
+Content-Type: application/json
+
+{
+  "vehiculeId": 1
+}
+
+### Sessions en cours
+GET {{TP_Stationnement_HostAddress}}/sessions/actives
+
+### Sortie (le montant est calculé ici)
+PUT {{TP_Stationnement_HostAddress}}/sessions/1/sortie
+
+### Corriger la sortie — 1 h 37 après l'entrée, par exemple
+PUT {{TP_Stationnement_HostAddress}}/sessions/1/modifier
+Content-Type: application/json
+
+{
+  "heureSortie": "2026-10-23T15:37:00Z",
+  "modifiePar": "guichet"
+}
+
+### Journal
+GET {{TP_Stationnement_HostAddress}}/sessions/1/audit
+
+### Période (les deux dates sont incluses)
+GET {{TP_Stationnement_HostAddress}}/sessions/periode?dateDebut=2026-10-01&dateFin=2026-10-31

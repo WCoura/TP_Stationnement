@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="fr-CA">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guichet de stationnement</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='18' width='100' height='100' fill='%231f3b32'/><text x='50' y='68' text-anchor='middle' font-size='58' font-family='Segoe UI,sans-serif' fill='%23f6f3ec'>P</text></svg>">
+  <style>
+    :root {
+      --encre: #1d2420;
+      --pin: #1f3b32;
+      --pin-fonce: #163028;
+      --papier: #f4f1ea;
+      --carte: #fffdf8;
+      --ligne: #e4dcd0;
+      --argile: #b24a28;
+      --ok: #1d6b45;
+      --erreur: #8c2f2f;
+      --doux: #5c665e;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+      color: var(--encre);
+      background: var(--papier);
+      line-height: 1.45;
+    }
+
+    header {
+      background: var(--pin);
+      color: #f6f3ec;
+      padding: 22px 28px 18px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.65rem;
+      font-weight: 650;
+    }
+
+    header p { margin: 4px 0 0; color: #d7e2db; }
+
+    header a { color: #f3d7b0; }
+
+    .page {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 20px 16px 56px;
+    }
+
+    .bandeau {
+      display: none;
+      margin: 0 0 16px;
+      padding: 10px 12px;
+      border-radius: 8px;
+    }
+
+    .bandeau.visible { display: block; }
+    .bandeau.ok { background: #e5f4eb; color: var(--ok); }
+    .bandeau.erreur { background: #f8e8e6; color: var(--erreur); }
+
+    .grille {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .carte {
+      background: var(--carte);
+      border: 1px solid var(--ligne);
+      border-radius: 12px;
+      padding: 16px 16px 18px;
+    }
+
+    .carte + .carte { margin-top: 16px; }
+
+    .carte h2 { margin: 0 0 4px; font-size: 1.08rem; }
+
+    .aide {
+      margin: 0 0 12px;
+      color: var(--doux);
+      font-size: 0.9rem;
+    }
+
+    label {
+      display: block;
+      margin: 10px 0 4px;
+      color: var(--doux);
+      font-size: 0.86rem;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      font: inherit;
+      padding: 8px 10px;
+      border: 1px solid #d5ccbe;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--encre);
+    }
+
+    textarea { min-height: 64px; resize: vertical; }
+
+    button {
+      font: inherit;
+      border: 0;
+      border-radius: 8px;
+      padding: 9px 14px;
+      background: var(--pin);
+      color: #fff;
+      cursor: pointer;
+    }
+
+    button:hover { background: var(--pin-fonce); }
+    button:disabled { opacity: 0.55; cursor: wait; }
+
+    button.secondaire {
+      background: transparent;
+      color: var(--pin);
+      border: 1px solid var(--pin);
+    }
+
+    button.sortie { background: var(--argile); }
+    button.sortie:hover { background: #8d381c; }
+
+    button.lien {
+      background: none;
+      color: var(--pin);
+      padding: 0;
+      text-decoration: underline;
+    }
+
+    .boutons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .separateur {
+      margin: 18px 0 8px;
+      border: 0;
+      border-top: 1px solid var(--ligne);
+    }
+
+    .session {
+      padding: 12px 0;
+      border-top: 1px solid var(--ligne);
+    }
+
+    .session:first-child { border-top: 0; padding-top: 4px; }
+
+    .meta { color: var(--doux); font-size: 0.9rem; }
+
+    .recu {
+      margin-top: 12px;
+      padding: 12px 14px;
+      background: #f8f1e4;
+      border-radius: 8px;
+    }
+
+    .montant {
+      margin: 4px 0 0;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--argile);
+    }
+
+    .vide { color: var(--doux); margin: 8px 0; }
+
+    .dates {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .dates button { margin-bottom: 1px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 0.92rem;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 8px 6px;
+      border-bottom: 1px solid var(--ligne);
+      vertical-align: top;
+    }
+
+    h3 { margin: 22px 0 8px; font-size: 1rem; }
+
+    @media (max-width: 800px) {
+      .grille, .dates { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Stationnement</h1>
+    <p>Guichet des entrées et des sorties. <a href="/swagger">Ouvrir Swagger</a></p>
+  </header>
+
+  <main class="page">
+    <div id="bandeau" class="bandeau" role="status"></div>
+
+    <div class="grille">
+      <section class="carte">
+        <h2>Entrée d'un véhicule</h2>
+        <p class="aide">Une tranche de 15 min entamée est due. L'heure complète coûte moins cher que quatre tranches. La journée est un plafond.</p>
+
+        <form id="formNouveau">
+          <label for="marque">Marque</label>
+          <input id="marque" name="marque" maxlength="50" required autocomplete="off">
+
+          <label for="modele">Modèle</label>
+          <input id="modele" name="modele" maxlength="50" required autocomplete="off">
+
+          <label for="couleur">Couleur</label>
+          <input id="couleur" name="couleur" maxlength="30" required autocomplete="off">
+
+          <label for="description">Description (optionnelle)</label>
+          <textarea id="description" name="description" maxlength="200"></textarea>
+
+          <div class="boutons">
+            <button type="submit">Enregistrer l'entrée</button>
+          </div>
+        </form>
+
+        <hr class="separateur">
+
+        <form id="formConnu">
+          <label for="vehiculeConnu">Véhicule déjà connu</label>
+          <select id="vehiculeConnu" required>
+            <option value="">Choisir un véhicule</option>
+          </select>
+          <div class="boutons">
+            <button type="submit" class="secondaire">Ouvrir une session</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="carte">
+        <h2>Sessions en cours</h2>
+        <p class="aide">La liste se rafraîchit toute seule.</p>
+        <div id="actives"></div>
+        <div id="recu" class="recu" hidden></div>
+      </section>
+    </div>
+
+    <section class="carte">
+      <h2>Sessions terminées</h2>
+      <p class="aide">Les deux dates comptent, de minuit à minuit, heure d'ici.</p>
+
+      <form id="formPeriode" class="dates">
+        <div>
+          <label for="dateDebut">Du</label>
+          <input id="dateDebut" type="date" required>
+        </div>
+        <div>
+          <label for="dateFin">Au</label>
+          <input id="dateFin" type="date" required>
+        </div>
+        <button type="submit">Chercher</button>
+      </form>
+
+      <div id="resultats"></div>
+
+      <h3>Corriger une heure de sortie</h3>
+      <p class="aide">Ça recalcule le montant et ça écrit une ligne dans le journal. La session doit déjà être terminée.</p>
+
+      <form id="formCorrection">
+        <label for="sessionId">Numéro de session</label>
+        <input id="sessionId" type="number" min="1" required>
+
+        <label for="heureSortie">Nouvelle heure de sortie</label>
+        <input id="heureSortie" type="datetime-local" required>
+
+        <label for="nomEmploye">Nom de l'employé</label>
+        <input id="nomEmploye" maxlength="80" required placeholder="Ton nom" autocomplete="name">
+
+        <div class="boutons">
+          <button type="submit">Enregistrer la correction</button>
+        </div>
+      </form>
+
+      <div id="audit"></div>
+    </section>
+  </main>
+
+  <script>
+    var nomEmploye = document.getElementById("nomEmploye");
+    nomEmploye.value = localStorage.getItem("nomEmploye") || "";
+    nomEmploye.addEventListener("change", function () {
+      localStorage.setItem("nomEmploye", nomEmploye.value.trim());
+    });
+
+    var aujourdhui = dateLocale(new Date());
+    document.getElementById("dateDebut").value = aujourdhui;
+    document.getElementById("dateFin").value = aujourdhui;
+
+    document.getElementById("formNouveau").addEventListener("submit", entreeNouveau);
+    document.getElementById("formConnu").addEventListener("submit", entreeConnu);
+    document.getElementById("formPeriode").addEventListener("submit", chercherPeriode);
+    document.getElementById("formCorrection").addEventListener("submit", corrigerSortie);
+
+    chargerVehicules(false);
+    chargerActives(false);
+    setInterval(function () { chargerActives(true); }, 20000);
+
+    function dateLocale(date) {
+      var mois = String(date.getMonth() + 1).padStart(2, "0");
+      var jour = String(date.getDate()).padStart(2, "0");
+      return date.getFullYear() + "-" + mois + "-" + jour;
+    }
+
+    function quand(iso) {
+      if (!iso) return "—";
+      return new Date(iso).toLocaleString("fr-CA", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    }
+
+    function argent(montant) {
+      return Number(montant).toLocaleString("fr-CA", { style: "currency", currency: "CAD" });
+    }
+
+    function nomVehicule(session) {
+      var v = session.vehicule;
+      if (!v) return "Véhicule " + session.vehiculeId;
+      var nom = v.marque + " " + v.modele + " · " + v.couleur;
+      if (v.description) nom += " — " + v.description;
+      return nom;
+    }
+
+    function depuis(iso) {
+      var minutes = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
+      var heures = Math.floor(minutes / 60);
+      var reste = minutes % 60;
+      if (heures <= 0) return reste + " min";
+      return heures + " h " + reste;
+    }
+
+    function vider(noeud) {
+      while (noeud.firstChild) noeud.removeChild(noeud.firstChild);
+    }
+
+    function afficherMessage(texte, ok) {
+      var bandeau = document.getElementById("bandeau");
+      bandeau.textContent = texte;
+      bandeau.className = "bandeau visible " + (ok ? "ok" : "erreur");
+    }
+
+    async function lireErreur(reponse) {
+      try {
+        var data = await reponse.json();
+        if (data.message) return data.message;
+        if (data.errors) {
+          var lignes = [];
+          Object.keys(data.errors).forEach(function (cle) {
+            data.errors[cle].forEach(function (msg) { lignes.push(msg); });
+          });
+          if (lignes.length) return lignes.join(" ");
+        }
+        if (data.title) return data.title;
+      } catch (e) {
+        // pas du JSON
+      }
+      return "La requête a échoué (" + reponse.status + ").";
+    }
+
+    async function api(url, options) {
+      options = options || {};
+      var reponse;
+      try {
+        reponse = await fetch(url, {
+          method: options.method || "GET",
+          cache: "no-store",
+          headers: options.body ? { "Content-Type": "application/json" } : undefined,
+          body: options.body ? JSON.stringify(options.body) : undefined
+        });
+      } catch (e) {
+        throw new Error("Le serveur ne répond pas. Est-ce que l'API est démarrée?");
+      }
+
+      if (!reponse.ok) throw new Error(await lireErreur(reponse));
+
+      var texte = await reponse.text();
+      if (!texte) return null;
+      return JSON.parse(texte);
+    }
+
+    async function chargerVehicules(silencieux) {
+      try {
+        var liste = await api("/vehicules");
+        var select = document.getElementById("vehiculeConnu");
+        var garde = select.value;
+        vider(select);
+        var vide = document.createElement("option");
+        vide.value = "";
+        vide.textContent = liste.length ? "Choisir un véhicule" : "Aucun véhicule encore";
+        select.appendChild(vide);
+
+        liste.forEach(function (v) {
+          var option = document.createElement("option");
+          option.value = v.vehiculeId;
+          option.textContent = v.marque + " " + v.modele + " · " + v.couleur;
+          select.appendChild(option);
+        });
+
+        if (garde) select.value = garde;
+      } catch (e) {
+        if (!silencieux) afficherMessage(messageServeur(e), false);
+      }
+    }
+
+    function messageServeur(e) {
+      var texte = e.message || "Erreur inattendue.";
+      if (texte.indexOf("500") !== -1 || texte.toLowerCase().indexOf("mysql") !== -1)
+        return "MySQL a refusé la connexion. Vérifie le mot de passe dans appsettings.json, puis que la base stationnement_db existe.";
+      return texte;
+    }
+
+    async function chargerActives(silencieux) {
+      var zone = document.getElementById("actives");
+      try {
+        var sessions = await api("/sessions/actives");
+        dessinerActives(sessions);
+      } catch (e) {
+        if (!silencieux) afficherMessage(messageServeur(e), false);
+        if (!zone.firstChild) {
+          var vide = document.createElement("p");
+          vide.className = "vide";
+          vide.textContent = "Impossible de charger les sessions.";
+          zone.appendChild(vide);
+        }
+      }
+    }
+
+    function dessinerActives(sessions) {
+      var zone = document.getElementById("actives");
+      vider(zone);
+
+      if (!sessions.length) {
+        var vide = document.createElement("p");
+        vide.className = "vide";
+        vide.textContent = "Aucune voiture dans le stationnement.";
+        zone.appendChild(vide);
+        return;
+      }
+
+      sessions.forEach(function (session) {
+        var bloc = document.createElement("div");
+        bloc.className = "session";
+
+        var titre = document.createElement("strong");
+        titre.textContent = nomVehicule(session);
+        bloc.appendChild(titre);
+
+        var info = document.createElement("div");
+        info.className = "meta";
+        info.textContent = "Session " + session.sessionId
+          + " · entrée " + quand(session.heureEntree)
+          + " · depuis " + depuis(session.heureEntree);
+        bloc.appendChild(info);
+
+        var boutons = document.createElement("div");
+        boutons.className = "boutons";
+        var bouton = document.createElement("button");
+        bouton.type = "button";
+        bouton.className = "sortie";
+        bouton.textContent = "Sortie";
+        bouton.addEventListener("click", function () { faireSortie(session, bouton); });
+        boutons.appendChild(bouton);
+        bloc.appendChild(boutons);
+
+        zone.appendChild(bloc);
+      });
+    }
+
+    async function entreeNouveau(event) {
+      event.preventDefault();
+      var bouton = event.submitter;
+      bouton.disabled = true;
+
+      try {
+        var vehicule = await api("/vehicules", {
+          method: "POST",
+          body: {
+            marque: document.getElementById("marque").value,
+            modele: document.getElementById("modele").value,
+            couleur: document.getElementById("couleur").value,
+            description: document.getElementById("description").value
+          }
+        });
+
+        await api("/sessions/entree", {
+          method: "POST",
+          body: { vehiculeId: vehicule.vehiculeId }
+        });
+
+        event.target.reset();
+        afficherMessage("Entrée enregistrée pour " + vehicule.marque + " " + vehicule.modele + ".", true);
+        await chargerVehicules(true);
+        await chargerActives(true);
+      } catch (e) {
+        afficherMessage(messageServeur(e), false);
+      } finally {
+        bouton.disabled = false;
+      }
+    }
+
+    async function entreeConnu(event) {
+      event.preventDefault();
+      var bouton = event.submitter;
+      bouton.disabled = true;
+      var id = Number(document.getElementById("vehiculeConnu").value);
+
+      try {
+        await api("/sessions/entree", {
+          method: "POST",
+          body: { vehiculeId: id }
+        });
+        afficherMessage("Session ouverte.", true);
+        await chargerActives(true);
+      } catch (e) {
+        afficherMessage(messageServeur(e), false);
+      } finally {
+        bouton.disabled = false;
+      }
+    }
+
+    async function faireSortie(session, bouton) {
+      bouton.disabled = true;
+      try {
+        var fermee = await api("/sessions/" + session.sessionId + "/sortie", { method: "PUT" });
+        montrerRecu(fermee);
+        afficherMessage("Sortie enregistrée.", true);
+        await chargerActives(true);
+      } catch (e) {
+        afficherMessage(messageServeur(e), false);
+        bouton.disabled = false;
+      }
+    }
+
+    // La durée ici, c'est le temps réel. Le montant vient du serveur.
+    function montrerRecu(session) {
+      var recu = document.getElementById("recu");
+      vider(recu);
+      recu.hidden = false;
+
+      var titre = document.createElement("strong");
+      titre.textContent = nomVehicule(session);
+      recu.appendChild(titre);
+
+      var lignes = document.createElement("div");
+      lignes.className = "meta";
+      var minutes = Math.max(0, Math.round((new Date(session.heureSortie) - new Date(session.heureEntree)) / 60000));
+      var heures = Math.floor(minutes / 60);
+      var reste = minutes % 60;
+      lignes.textContent = "Entrée " + quand(session.heureEntree)
+        + " · sortie " + quand(session.heureSortie)
+        + " · " + (heures > 0 ? heures + " h " + reste + " min" : reste + " min");
+      recu.appendChild(lignes);
+
+      var montant = document.createElement("p");
+      montant.className = "montant";
+      montant.textContent = argent(session.montantFacture);
+      recu.appendChild(montant);
+    }
+
+    async function chercherPeriode(event) {
+      if (event) event.preventDefault();
+
+      var debut = document.getElementById("dateDebut").value;
+      var fin = document.getElementById("dateFin").value;
+      if (!debut || !fin) return;
+
+      try {
+        var sessions = await api("/sessions/periode?dateDebut=" + debut + "&dateFin=" + fin);
+        dessinerResultats(sessions);
+      } catch (e) {
+        afficherMessage(messageServeur(e), false);
+      }
+    }
+
+    function dessinerResultats(sessions) {
+      var zone = document.getElementById("resultats");
+      vider(zone);
+
+      if (!sessions.length) {
+        var vide = document.createElement("p");
+        vide.className = "vide";
+        vide.textContent = "Aucune session terminée pour ces dates.";
+        zone.appendChild(vide);
+        return;
+      }
+
+      var table = document.createElement("table");
+      var entete = document.createElement("tr");
+      ["Véhicule", "Entrée", "Sortie", "Montant", ""].forEach(function (titre) {
+        var th = document.createElement("th");
+        th.textContent = titre;
+        entete.appendChild(th);
+      });
+      table.appendChild(entete);
+
+      sessions.forEach(function (session) {
+        var ligne = document.createElement("tr");
+        [nomVehicule(session), quand(session.heureEntree), quand(session.heureSortie), argent(session.montantFacture)]
+          .forEach(function (texte) {
+            var td = document.createElement("td");
+            td.textContent = texte;
+            ligne.appendChild(td);
+          });
+
+        var actions = document.createElement("td");
+        var corriger = document.createElement("button");
+        corriger.type = "button";
+        corriger.className = "lien";
+        corriger.textContent = "Corriger";
+        corriger.addEventListener("click", function () { preparerCorrection(session); });
+        actions.appendChild(corriger);
+        ligne.appendChild(actions);
+        table.appendChild(ligne);
+      });
+
+      zone.appendChild(table);
+    }
+
+    function preparerCorrection(session) {
+      document.getElementById("sessionId").value = session.sessionId;
+      document.getElementById("heureSortie").value = versDatetimeLocal(session.heureSortie);
+      document.getElementById("heureSortie").focus();
+      chargerAudit(session.sessionId);
+    }
+
+    function versDatetimeLocal(iso) {
+      var date = new Date(iso);
+      var pad = function (n) { return String(n).padStart(2, "0"); };
+      return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate())
+        + "T" + pad(date.getHours()) + ":" + pad(date.getMinutes());
+    }
+
+    async function corrigerSortie(event) {
+      event.preventDefault();
+      var bouton = event.submitter;
+      bouton.disabled = true;
+
+      var id = document.getElementById("sessionId").value;
+      var heure = document.getElementById("heureSortie").value;
+      var employe = nomEmploye.value.trim();
+      localStorage.setItem("nomEmploye", employe);
+
+      try {
+        var data = await api("/sessions/" + id + "/modifier", {
+          method: "PUT",
+          body: {
+            heureSortie: new Date(heure).toISOString(),
+            modifiePar: employe
+          }
+        });
+        afficherMessage(data.message, true);
+        await chargerAudit(id);
+        await chercherPeriode();
+      } catch (e) {
+        afficherMessage(messageServeur(e), false);
+      } finally {
+        bouton.disabled = false;
+      }
+    }
+
+    async function chargerAudit(id) {
+      var zone = document.getElementById("audit");
+      vider(zone);
+
+      try {
+        var lignes = await api("/sessions/" + id + "/audit");
+        var titre = document.createElement("h3");
+        titre.textContent = "Journal de la session " + id;
+        zone.appendChild(titre);
+
+        if (!lignes.length) {
+          var vide = document.createElement("p");
+          vide.className = "vide";
+          vide.textContent = "Aucune correction pour cette session.";
+          zone.appendChild(vide);
+          return;
+        }
+
+        var table = document.createElement("table");
+        var entete = document.createElement("tr");
+        ["Quand", "Champ", "Avant", "Après", "Par"].forEach(function (nom) {
+          var th = document.createElement("th");
+          th.textContent = nom;
+          entete.appendChild(th);
+        });
+        table.appendChild(entete);
+
+        lignes.forEach(function (ligne) {
+          var tr = document.createElement("tr");
+          [quand(ligne.dateModification), libelleChamp(ligne.champModifie), ligne.ancienneValeur, ligne.nouvelleValeur, ligne.modifiePar]
+            .forEach(function (texte) {
+              var td = document.createElement("td");
+              td.textContent = texte;
+              tr.appendChild(td);
+            });
+          table.appendChild(tr);
+        });
+
+        zone.appendChild(table);
+      } catch (e) {
+        afficherMessage(messageServeur(e), false);
+      }
+    }
+
+    function libelleChamp(champ) {
+      if (champ === "HeureSortie") return "Heure de sortie";
+      if (champ === "MontantFacture") return "Montant";
+      return champ;
+    }
+  </script>
+</body>
+</html>
